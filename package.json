@@ -1,0 +1,41 @@
+{
+  "name": "launchpad-smart-contract",
+  "version": "0.1.0",
+  "main": "",
+  "repository": "",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "truffle": "./node_modules/.bin/truffle",
+    "develop": "yarn truffle develop",
+    "test": "yarn truffle test",
+    "coverage": "yarn truffle run coverage",
+    "compile": "yarn truffle compile",
+    "check-size": "yarn truffle run contract-size --checkMaxSize",
+    "migrate": "yarn truffle migrate",
+    "migrate:local": "yarn migrate --network local",
+    "migrate:testnet": "yarn migrate --network testnet",
+    "migrate:bsc": "yarn migrate --network bsc",
+    "build-contracts": "sol-merger \"./contracts/*.sol\" ./build"
+  },
+  "devDependencies": {
+    "chai-as-promised": "^7.1.1",
+    "eth-gas-reporter": "^0.2.22",
+    "sol-merger": "^4.1.1",
+    "solidity-coverage": "^0.7.16",
+    "truffle": "^5.3.9"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.1.0",
+    "@openzeppelin/contracts-upgradeable": "^4.2.0",
+    "@openzeppelin/truffle-upgrades": "^1.8.0",
+    "@truffle/hdwallet-provider": "^2.0.4",
+    "chai": "^4.3.6",
+    "chai-bn": "^0.3.0",
+    "merkletreejs": "^0.2.31",
+    "truffle-assertions": "^0.9.2",
+    "truffle-contract-size": "^2.0.1",
+    "truffle-plugin-verify": "^0.5.9",
+    "web3": "^1.7.3"
+  }
+}

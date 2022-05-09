@@ -1,706 +1,221 @@
-// SPDX-License-Identifier: GPL-3.0
-
-
-
 pragma solidity ^0.8.0;
+ 
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./interfaces/IERC20Decimals.sol";
+ 
+contract IDO is Ownable, ReentrancyGuard {
+    using Counters for Counters.Counter;
+    Counters.Counter private ids;
 
-interface IERC20 {
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
-    function totalSupply() external view returns (uint256);
-
-    /**
-     * @dev Returns the token decimals.
-     */
-    function decimals() external view returns (uint8);
-
-    /**
-     * @dev Returns the token symbol.
-     */
-    function symbol() external view returns (string memory);
-
-    /**
-     * @dev Returns the token name.
-     */
-    function name() external view returns (string memory);
-
-    /**
-     * @dev Returns the bep token owner.
-     */
-    function getOwner() external view returns (address);
-
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Moves `amount` tokens from the caller's account to `recipient`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transfer(address recipient, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address _owner, address spender) external view returns (uint256);
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Moves `amount` tokens from `sender` to `recipient` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-}
-/**
- * @dev Wrappers over Solidity's arithmetic operations with added overflow
- * checks.
- *
- * Arithmetic operations in Solidity wrap on overflow. This can easily result
- * in bugs, because programmers usually assume that an overflow raises an
- * error, which is the standard behavior in high level programming languages.
- * `SafeMath` restores this intuition by reverting the transaction when an
- * operation overflows.
- *
- * Using this library instead of the unchecked operations eliminates an entire
- * class of bugs, so it's recommended to use it always.
- */
-library SafeMath {
-    /**
-     * @dev Returns the addition of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
-     *
-     * Requirements:
-     * - Addition cannot overflow.
-     */
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
-
-        return c;
+    struct Initialize {
+        bool hasWhitelisting;
+        uint256 tradeValue;
+        uint256 startDate;
+        uint256 endDate;
+        uint256 individualMinimumAmount;
+        uint256 individualMaximumAmount;
+        uint256 minimumRaise;
+        uint256 tokensForSale;
+        bool isTokenSwapAtomic;
     }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     * - Subtraction cannot overflow.
-     *
-     * _Available since v2.4.0._
-     */
-    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        uint256 c = a - b;
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
-     *
-     * Requirements:
-     * - Multiplication cannot overflow.
-     */
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-        if (a == 0) {
-            return 0;
-        }
-
-        uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath: division by zero");
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     *
-     * _Available since v2.4.0._
-     */
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        // Solidity only automatically asserts when dividing by 0
-        require(b > 0, errorMessage);
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mod(a, b, "SafeMath: modulo by zero");
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts with custom message when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     * - The divisor cannot be zero.
-     *
-     * _Available since v2.4.0._
-     */
-    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
-        return a % b;
-    }
-}
-
-
-// File: openzeppelin-solidity/contracts/ownership/Ownable.sol
-
-/**
- * @title Ownable
- * @dev The Ownable contract has an owner address, and provides basic authorization control
- * functions, this simplifies the implementation of "user permissions".
- */
-contract Ownable {
-    address public owner;
-    address public proposedOwner;
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-
-    /**
-    * @dev The Ownable constructor sets the original `owner` of the contract to the sender
-    * account.
-    */
-    constructor()  {
-        owner = msg.sender;
-    }
-
-    /**
-    * @dev Throws if called by any account other than the owner.
-    */
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Has to be owner");
-        _;
-    }
-
-    function transferOwnership(address _proposedOwner) public onlyOwner {
-        require(msg.sender != _proposedOwner, "Has to be diff than current owner");
-        proposedOwner = _proposedOwner;
-    }
-
-    function claimOwnership() public {
-        require(msg.sender == proposedOwner, "Has to be the proposed owner");
-        emit OwnershipTransferred(owner, proposedOwner);
-        owner = proposedOwner;
-        proposedOwner = address(0);
-    }
-}
-
-// File: openzeppelin-solidity/contracts/lifecycle/Pausable.sol
-
-/**
- * @title Pausable
- * @dev Base contract which allows children to implement an emergency stop mechanism.
- */
-contract Pausable is Ownable {
-    event Pause();
-    event Unpause();
-
-    bool public paused = false;
-
-
-    /**
-    * @dev Modifier to make a function callable only when the contract is not paused.
-    */
-    modifier whenNotPaused() {
-        require(!paused, "Has to be unpaused");
-        _;
-    }
-
-    /**
-    * @dev Modifier to make a function callable only when the contract is paused.
-    */
-    modifier whenPaused() {
-        require(paused, "Has to be paused");
-        _;
-    }
-
-    /**
-    * @dev called by the owner to pause, triggers stopped state
-    */
-    function pause() onlyOwner whenNotPaused public {
-        paused = true;
-        emit Pause();
-    }
-
-    /**
-    * @dev called by the owner to unpause, returns to normal state
-    */
-    function unpause() onlyOwner whenPaused public {
-        paused = false;
-        emit Unpause();
-    }
-}
-
-
-contract Whitelist is Ownable {
-
-    mapping(address => bool) public whitelist;
-    address[] public whitelistedAddresses;
-    bool public hasWhitelisting = false;
-
-    event AddedToWhitelist(address[] indexed accounts);
-    event RemovedFromWhitelist(address indexed account);
-
-    modifier onlyWhitelisted() {
-        if(hasWhitelisting){
-            require(isWhitelisted(msg.sender));
-        }
-        _;
-    }
-    
-    constructor (bool _hasWhitelisting) {
-        hasWhitelisting = _hasWhitelisting;
-    }
-
-    function add(address[] memory _addresses) public onlyOwner {
-        for (uint i = 0; i < _addresses.length; i++) {
-            require(whitelist[_addresses[i]] != true);
-            whitelist[_addresses[i]] = true;
-            whitelistedAddresses.push(_addresses[i]);
-        }
-        emit AddedToWhitelist(_addresses);
-    }
-
-    function remove(address _address, uint256 _index) public onlyOwner {
-        require(_address == whitelistedAddresses[_index]);
-        whitelist[_address] = false;
-        delete whitelistedAddresses[_index];
-        emit RemovedFromWhitelist(_address);
-    }
-
-    function getWhitelistedAddresses() public view returns(address[] memory) {
-        return whitelistedAddresses;
-    } 
-
-    function isWhitelisted(address _address) public view returns(bool) {
-        return whitelist[_address];
-    }
-}
-
-contract IDO is Pausable, Whitelist {
-    using SafeMath for uint256;
-    uint256 increment = 0;
-
-    mapping(uint256 => Purchase) public purchases; /* Purchasers mapping */
-    address[] public buyers; /* Current Buyers Addresses */
-    uint256[] public purchaseIds; /* All purchaseIds */
-    mapping(address => uint256[]) public myPurchases; /* Purchasers mapping */
-
-    IERC20 public erc20;
-    string public idoURI;
-
-    bool public isSaleFunded = false;
-    uint public decimals = 0;
-
-    bool public unsoldTokensReedemed = false;
-    uint256 public tradeValue; /* Price in Wei */
-    uint256 public startDate; /* Start Date  */
-    uint256 public endDate;  /* End Date  */
-    uint256 public individualMinimumAmount = 0;  /* Minimum Amount Per Address */
-    uint256 public individualMaximumAmount = 0;  /* Minimum Amount Per Address */
-    uint256 public minimumRaise = 0;  /* Minimum Amount of Tokens that have to be sold */
-    uint256 public tokensAllocated = 0; /* Tokens Available for Allocation - Dynamic */
-    uint256 public tokensForSale = 0; /* Tokens Available for Sale */
-    bool    public isTokenSwapAtomic; /* Make token release atomic or not */
-    address payable public FEE_ADDRESS;
-    uint256 public feePercentage = 1; /* Default Fee 1% */
-
+ 
     struct Purchase {
-        uint256 amount;
         address purchaser;
-        uint256 ethAmount;
+        uint256 amount;
+        uint256 pamount;
         uint256 timestamp;
-        bool wasFinalized /* Confirm the tokens were sent already */;
-        bool reverted /* Confirm the tokens were sent already */;
     }
 
-    event PurchaseEvent(uint256 amount, address indexed purchaser, uint256 timestamp);
-
-    event onURIChanged(string uri);
-
-    constructor(address _tokenAddress, uint256 _tradeValue, uint256 _tokensForSale, uint256 _startDate, 
-        uint256 _endDate, uint256 _individualMinimumAmount, uint256 _individualMaximumAmount, bool _isTokenSwapAtomic, uint256 _minimumRaise,
-        uint256 _feeAmount, bool _hasWhitelisting, address _FEE_ADDRESS
-    )  Whitelist(_hasWhitelisting) {
-        
-        /* Confirmations */
-       
-        require(block.timestamp < _endDate, "End Date should be further than current date");
-        require(block.timestamp < _startDate, "Start Date Date should be further than current date");
-        require(_startDate < _endDate, "End Date higher than Start Date");
-        require(_tokensForSale > 0, "Tokens for Sale should be > 0");
-        require(_tokensForSale > _individualMinimumAmount, "Tokens for Sale should be > Individual Minimum Amount");
-        require(_individualMaximumAmount >= _individualMinimumAmount, "Individual Maximim AMount should be > Individual Minimum Amount");
-        require(_minimumRaise <= _tokensForSale, "Minimum Raise should be < Tokens For Sale");
-        require(_feeAmount >= feePercentage, "Fee Percentage has to be >= 1");
-        require(_feeAmount <= 99, "Fee Percentage has to be < 100");
-
-        FEE_ADDRESS=payable(_FEE_ADDRESS);
-        startDate = _startDate; 
-        endDate = _endDate;
-        tokensForSale = _tokensForSale;
-        tradeValue = _tradeValue;
-
-        individualMinimumAmount = _individualMinimumAmount; 
-        individualMaximumAmount = _individualMaximumAmount; 
-        isTokenSwapAtomic = _isTokenSwapAtomic;
-
-        if(!_isTokenSwapAtomic){ /* If raise is not atomic swap */
-            minimumRaise = _minimumRaise;
-        }
+    bool public unsoldTokensReedemed;
+    Initialize public initialize;
+    string public idoURI;
+    IERC20 public erc20;
+    uint8 public decimals;
+    IERC20 public tokenPayment;
+    bool public hastokenPayment;
+    bool public isSaleFunded;
+    bytes32 public merkleRootWhitelist;
+    uint256 public tokensAllocated;
+    address payable public FEE_ADDRESS;
+    uint256 public feePercentage;
+ 
+    mapping(uint256 => Purchase) public purchases;
+    mapping(address => uint256) public redeemAmount;
+    mapping(address => bool) public redeemStatus;
+ 
+    event Fund(address indexed funder, uint256 indexed amount, uint256 indexed timestamp);
+    event PurchaseEvent(address indexed purchaser, uint256 indexed purchaseId, uint256 indexed amount, uint256 timestamp);
+    event Redeem(address indexed who, uint256 indexed amount, uint256 indexed timestamp);
+    event Refund(address indexed who, uint256 indexed amount, uint256 indexed timestamp);
+ 
+    constructor(Initialize memory _initialize, string memory  _uri, address _tokenPaymentAddress, bool _hasTokenPayment, address _tokenAddress, uint256 _feePercentage, address _FEE_ADDRESS) {
+        uint256 timestamp = block.timestamp;
+ 
+        require(timestamp < _initialize.startDate, "Start Date Date should be further than current date");
+        require(timestamp < _initialize.endDate, "End Date should be further than current date");
+        require(_initialize.startDate < _initialize.endDate, "End Date higher than Start Date");
+        require(_initialize.tokensForSale > 0, "Tokens for Sale should be > 0");
+        require(_initialize.tokensForSale > _initialize.individualMinimumAmount, "Tokens for Sale should be > Individual Minimum Amount");
+        require(_initialize.individualMaximumAmount >= _initialize.individualMinimumAmount, "Individual Maximim AMount should be > Individual Minimum Amount");
+        require(_initialize.minimumRaise <= _initialize.tokensForSale, "Minimum Raise should be < Tokens For Sale");
+        require(_initialize.tradeValue > 0, "Trade value has to be > 0");
+        require(_feePercentage > 0, "Fee Percentage has to be > 0");
+        require(_feePercentage <= 10000, "Fee Percentage has to be < 10000");
+ 
+        initialize = _initialize;
+        tokenPayment = IERC20(_tokenPaymentAddress);
+        hastokenPayment = _hasTokenPayment;
+        FEE_ADDRESS = payable(_FEE_ADDRESS);
+        idoURI = _uri;
+ 
+        initialize.minimumRaise = !_initialize.isTokenSwapAtomic  ? _initialize.minimumRaise : 0;
 
         erc20 = IERC20(_tokenAddress);
-        decimals = erc20.decimals();
-        feePercentage = _feeAmount;
+        decimals = IERC20Decimals(_tokenAddress).decimals();
+        feePercentage = _feePercentage;
+        unsoldTokensReedemed = false;
+        isSaleFunded = false;
+        ids.increment();
     }
-
-
-
+ 
+    modifier isNotAtomicSwap() {
+        require(!initialize.isTokenSwapAtomic, "Has to be non Atomic swap");
+        _;
+    }
+ 
+    modifier isSaleFinalized() {
+        require(block.timestamp > initialize.endDate, "Has to be finalized");
+        _;
+    }
+ 
+    function setMerkleRoot(bytes32 _merkleRootWhitelist) external onlyOwner {
+        merkleRootWhitelist = _merkleRootWhitelist;
+    }
+ 
     function setTokenURI(string memory _idoURI) public onlyOwner {
         idoURI = _idoURI;
-
-        emit onURIChanged(_idoURI);
     }
 
-    /**
-    * Modifier to make a function callable only when the contract has Atomic Swaps not available.
-    */
-    modifier isNotAtomicSwap() {
-        require(!isTokenSwapAtomic, "Has to be non Atomic swap");
-        _;
+    function lastId() external view returns(uint256) {
+        return ids.current();
     }
-
-     /**
-    * Modifier to make a function callable only when the contract has Atomic Swaps not available.
-    */
-    modifier isSaleFinalized() {
-        require(hasFinalized(), "Has to be finalized");
-        _;
-    }
-
-     /**
-    * Modifier to make a function callable only when the swap time is open.
-    */
-    modifier isSaleOpen() {
-        require(isOpen(), "Has to be open");
-        _;
-    }
-
-     /**
-    * Modifier to make a function callable only when the contract has Atomic Swaps not available.
-    */
-    modifier isSalePreStarted() {
-        require(isPreStart(), "Has to be pre-started");
-        _;
-    }
-
-    /**
-    * Modifier to make a function callable only when the contract has Atomic Swaps not available.
-    */
-    modifier isFunded() {
-        require(isSaleFunded, "Has to be funded");
-        _;
-    }
-
-
-    /* Get Functions */
-    function isBuyer(uint256 purchase_id) public view returns (bool) {
-        return (msg.sender == purchases[purchase_id].purchaser);
-    }
-
-    /* Get Functions */
-    function totalRaiseCost() public view returns (uint256) {
-        return (cost(tokensForSale));
-    }
-
-    function availableTokens() public view returns (uint256) {
-        return erc20.balanceOf(address(this));
-    }
-
-    function tokensLeft() public view returns (uint256) {
-        return tokensForSale - tokensAllocated;
-    }
-
-    function hasMinimumRaise() public view returns (bool){
-        return (minimumRaise != 0);
-    }
-
-    /* Verify if minimum raise was not achieved */
-    function minimumRaiseNotAchieved() public view returns (bool){
-        require(cost(tokensAllocated) < cost(minimumRaise), "TotalRaise is bigger than minimum raise amount");
-        return true;
-    }
-
-    /* Verify if minimum raise was achieved */
-    function minimumRaiseAchieved() public view returns (bool){
-        if(hasMinimumRaise()){
-            require(cost(tokensAllocated) >= cost(minimumRaise), "TotalRaise is less than minimum raise amount");
-        }
-        return true;
-    }
-
-    function hasFinalized() public view returns (bool){
-        return block.timestamp > endDate;
-    }
-
-    function hasStarted() public view returns (bool){
-        return block.timestamp >= startDate;
-    }
-    
-    function isPreStart() public view returns (bool){
-        return block.timestamp < startDate;
-    }
-
-    function isOpen() public view returns (bool){
-        return hasStarted() && !hasFinalized();
-    }
-
-    function hasMinimumAmount() public view returns (bool){
-       return (individualMinimumAmount != 0);
-    }
-
-    function cost(uint256 _amount) public view returns (uint){
-        return _amount.mul(tradeValue).div(10**decimals); 
-    }
-
-    function getPurchase(uint256 _purchase_id) external view returns (uint256, address, uint256, uint256, bool, bool){
-        Purchase memory purchase = purchases[_purchase_id];
-        return (purchase.amount, purchase.purchaser, purchase.ethAmount, purchase.timestamp, purchase.wasFinalized, purchase.reverted);
-    }
-
-    function getPurchaseIds() public view returns(uint256[] memory) {
-        return purchaseIds;
-    }
-
-    function getBuyers() public view returns(address[] memory) {
-        return buyers;
-    }
-
-    function getMyPurchases(address _address) public view returns(uint256[] memory) {
-        return myPurchases[_address];
-    }
-
-    /* Fund - Pre Sale Start */
-    function fund(uint256 _amount) public isSalePreStarted {
-        
-        /* Confirm transfered tokens is no more than needed */
-        require(availableTokens().add(_amount) <= tokensForSale, "Transfered tokens have to be equal or less than proposed");
-
-        /* Transfer Funds */
-        require(erc20.transferFrom(msg.sender, address(this), _amount), "Failed ERC20 token transfer");
-        
-        /* If Amount is equal to needed - sale is ready */
-        if(availableTokens() == tokensForSale){
+ 
+    function fund(uint256 _amount) external nonReentrant {
+        uint256 timestamp = block.timestamp;
+        require(timestamp < initialize.startDate, "Has to be pre-started");
+ 
+        uint256 availableTokens = erc20.balanceOf(address(this)) + _amount;
+        require(availableTokens <= initialize.tokensForSale, "Transfered tokens have to be equal or less than proposed");
+ 
+        address who = _msgSender();
+        SafeERC20.safeTransferFrom(erc20, who, address(this), _amount);
+ 
+        if(availableTokens == initialize.tokensForSale){
             isSaleFunded = true;
         }
+        emit Fund(who, _amount, timestamp);
     }
-    
-    /* Action Functions */
-    function swap(uint256 _amount) payable external whenNotPaused isFunded isSaleOpen onlyWhitelisted {
+ 
+    function swap(uint256 _amount) external payable {
+        require(!initialize.hasWhitelisting, "IDO has whitelisting");
+        swapint(_msgSender(), _amount);
+    }
+ 
+    function swap(bytes32[] calldata _merkleProof, uint256 _amount) external payable {
+        require(initialize.hasWhitelisting, "IDO not has whitelisting");
+        address who = _msgSender();
+        require(MerkleProof.verify(_merkleProof, merkleRootWhitelist, keccak256(abi.encodePacked(who))), "Address not whitelist");
+        swapint(who, _amount);
+    }
 
-        /* Confirm Amount is positive */
-        require(_amount > 0, "Amount has to be positive");
+    function swapint(address _who, uint256 _amount) internal nonReentrant {
+        require(isSaleFunded, "Has to be funded");
+        uint256 timestamp = block.timestamp;
+        require(timestamp >= initialize.startDate && timestamp <= initialize.endDate, "Has to be open");
+        require(_amount > 0, "Amount must be more than zero");
+        require(_amount <= (initialize.tokensForSale - tokensAllocated), "Amount is less than tokens available");
+        uint256 costAmount = _amount * initialize.tradeValue / (10 ** decimals);
+        require(hastokenPayment || (!hastokenPayment && msg.value >= costAmount), "User has to cover the cost of the swap in BNB, use the cost function to determine");
+        require(_amount >= initialize.individualMinimumAmount, "Amount is smaller than minimum amount");
+        require((redeemAmount[_who] + _amount) <= initialize.individualMaximumAmount, "Total amount is bigger than maximum amount");
 
-        /* Confirm Amount is less than tokens available */
-        require(_amount <= tokensLeft(), "Amount is less than tokens available");
-            
-        /* Confirm the user has funds for the transfer, confirm the value is equal */
-        require(msg.value == cost(_amount), "User has to cover the cost of the swap in ETH, use the cost function to determine");
-
-        /* Confirm Amount is bigger than minimum Amount */
-        require(_amount >= individualMinimumAmount, "Amount is bigger than minimum amount");
-
-        /* Confirm Amount is smaller than maximum Amount */
-        require(_amount <= individualMaximumAmount, "Amount is smaller than maximum amount");
-
-        /* Verify all user purchases, loop thru them */
-        uint256[] memory _purchases = getMyPurchases(msg.sender);
-        uint256 purchaserTotalAmountPurchased = 0;
-        for (uint i = 0; i < _purchases.length; i++) {
-            Purchase memory _purchase = purchases[_purchases[i]];
-            purchaserTotalAmountPurchased = purchaserTotalAmountPurchased.add(_purchase.amount);
+        if (hastokenPayment) {
+            SafeERC20.safeTransferFrom(tokenPayment, _who, address(this), costAmount);
         }
-        require(purchaserTotalAmountPurchased.add(_amount) <= individualMaximumAmount, "Address has already passed the max amount of swap");
-
-        if(isTokenSwapAtomic){
-            /* Confirm transfer */
-            require(erc20.transfer(msg.sender, _amount), "ERC20 transfer didnt work");
+        if (initialize.isTokenSwapAtomic) {
+            SafeERC20.safeTransfer(erc20, _who, _amount);
         }
-        
-        uint256 purchase_id = increment;
-        increment = increment.add(1);
-
-        /* Create new purchase */
-        Purchase memory purchase = Purchase(_amount, msg.sender, msg.value, block.timestamp, isTokenSwapAtomic, false);
-        purchases[purchase_id] = purchase;
-        purchaseIds.push(purchase_id);
-        myPurchases[msg.sender].push(purchase_id);
-        buyers.push(msg.sender);
-        tokensAllocated = tokensAllocated.add(_amount);
-        emit PurchaseEvent(_amount, msg.sender, block.timestamp);
+        if (msg.value > costAmount) {
+            Address.sendValue(payable(_who), msg.value - costAmount);
+        }
+        uint256 purchaseId = ids.current();
+        purchases[purchaseId] = Purchase(_who, _amount, costAmount, timestamp);
+        tokensAllocated += _amount;
+        redeemAmount[_who] += _amount;
+        ids.increment();
+        emit PurchaseEvent(_who, purchaseId, _amount, timestamp);
     }
-
-    /* Redeem tokens when the sale was finalized */
-    function redeemTokens(uint256 purchase_id) external isNotAtomicSwap isSaleFinalized whenNotPaused {
-        /* Confirm it exists and was not finalized */
-        require((purchases[purchase_id].amount != 0) && !purchases[purchase_id].wasFinalized, "Purchase is either 0 or finalized");
-        require(isBuyer(purchase_id), "Address is not buyer");
-        purchases[purchase_id].wasFinalized = true;
-        require(erc20.transfer(msg.sender, purchases[purchase_id].amount), "ERC20 transfer failed");
+ 
+    function redeemTokens() external isNotAtomicSwap isSaleFinalized nonReentrant {
+        require(tokensAllocated >= initialize.minimumRaise, "Minimum raise has not been achieved");
+        address who = _msgSender();
+        require(!redeemStatus[who], "Already redeemed");
+        uint256 amount = redeemAmount[who];
+        require(amount > 0, "Purchase cannot be zero");
+        redeemStatus[who] = true;
+        SafeERC20.safeTransfer(erc20, who, amount);
+        emit Redeem(who, amount, block.timestamp);
     }
-
-    /* Retrieve Minumum Amount */
-    function redeemGivenMinimumGoalNotAchieved(uint256 purchase_id) external isSaleFinalized isNotAtomicSwap {
-        require(hasMinimumRaise(), "Minimum raise has to exist");
-        require(minimumRaiseNotAchieved(), "Minimum raise has to be reached");
-        /* Confirm it exists and was not finalized */
-        require((purchases[purchase_id].amount != 0) && !purchases[purchase_id].wasFinalized, "Purchase is either 0 or finalized");
-        require(isBuyer(purchase_id), "Address is not buyer");
-        purchases[purchase_id].wasFinalized = true;
-        purchases[purchase_id].reverted = true;
-        payable(msg.sender).transfer(purchases[purchase_id].ethAmount);
+ 
+    function redeemGivenMinimumGoalNotAchieved() external isNotAtomicSwap isSaleFinalized nonReentrant {
+        require(tokensAllocated < initialize.minimumRaise, "Minimum raise has to be reached");
+        address who = _msgSender();
+        require(!redeemStatus[who], "Already redeemed");
+        uint256 amount = redeemAmount[who] * initialize.tradeValue / (10 ** decimals);
+        require(amount > 0, "Purchase cannot be zero");
+        redeemStatus[who] = true;
+        if (hastokenPayment) {
+            SafeERC20.safeTransfer(tokenPayment, who, amount);
+        } else {
+            Address.sendValue(payable(who), amount);
+        }
+        emit Refund(who, amount, block.timestamp);
     }
-
-    /* Admin Functions */
-    function withdrawFunds() external onlyOwner whenNotPaused isSaleFinalized {
-        require(minimumRaiseAchieved(), "Minimum raise has to be reached");
-        FEE_ADDRESS.transfer(address(this).balance.mul(feePercentage).div(100)); /* Fee Address */
-        payable( msg.sender).transfer(address(this).balance);
+ 
+    function withdrawFunds() external onlyOwner isSaleFinalized {
+        require(tokensAllocated >= initialize.minimumRaise, "Minimum raise has to be reached");
+        address who = _msgSender();
+        uint256 amount = hastokenPayment ? tokenPayment.balanceOf(address(this)) : address(this).balance;
+        uint256 amountFee = amount * feePercentage / 10000;
+        uint256 amountOwner = amount - amountFee;
+        if (hastokenPayment) {
+            SafeERC20.safeTransfer(tokenPayment, FEE_ADDRESS, amountFee);
+            if (amountOwner > 0) {
+                SafeERC20.safeTransfer(tokenPayment, who, amountOwner);
+            }
+        } else {
+            Address.sendValue(FEE_ADDRESS, amountFee);
+            if (amountOwner > 0) {
+                Address.sendValue(payable(who), amountOwner);
+            }
+        }
     }  
-    
+ 
     function withdrawUnsoldTokens() external onlyOwner isSaleFinalized {
-        require(!unsoldTokensReedemed);
-        uint256 unsoldTokens;
-        if(hasMinimumRaise() && 
-            (cost(tokensAllocated) < cost(minimumRaise))){ /* Minimum Raise not reached */
-                unsoldTokens = tokensForSale;
-        }else{
-            /* If minimum Raise Achieved Redeem All Tokens minus the ones */
-            unsoldTokens = tokensForSale.sub(tokensAllocated);
-        }
-
-        if(unsoldTokens > 0){
-            unsoldTokensReedemed = true;
-            require(erc20.transfer(msg.sender, unsoldTokens), "ERC20 transfer failed");
-        }
+        require(!unsoldTokensReedemed, "Token already taken");
+        uint256 unsoldTokens = tokensAllocated >= initialize.minimumRaise ? initialize.tokensForSale - tokensAllocated : initialize.tokensForSale;
+        require(unsoldTokens > 0, "Unsold token cannot be zero");
+        unsoldTokensReedemed = true;
+        SafeERC20.safeTransfer(erc20, _msgSender(), unsoldTokens);
     }   
-
-    function removeOtherERC20Tokens(address _tokenAddress, address _to) external onlyOwner isSaleFinalized {
-        require(_tokenAddress != address(erc20), "Token Address has to be diff than the erc20 subject to sale"); // Confirm tokens addresses are different from main sale one
-        IERC20 erc20Token = IERC20(_tokenAddress);
-        require(erc20Token.transfer(_to, erc20Token.balanceOf(address(this))), "ERC20 Token transfer failed");
-    } 
-
-    /* Safe Pull function */
-    function safePull() payable external onlyOwner whenPaused {
-        payable(msg.sender).transfer(address(this).balance);
-        erc20.transfer(msg.sender, erc20.balanceOf(address(this)));
+ 
+    function removeOtherbep20Tokens(address _tokenAddress, address _to) external onlyOwner isSaleFinalized {
+        require(_tokenAddress != address(erc20) && _tokenAddress != address(tokenPayment), "Token Address has to be diff than the bep20 subject to sale and payment");
+        IERC20 bep20Token = IERC20(_tokenAddress);
+        SafeERC20.safeTransfer(bep20Token, _to, bep20Token.balanceOf(address(this)));
     }
 }
