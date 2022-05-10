@@ -122,11 +122,12 @@ contract('IDO Factory & IDO', function (accounts) {
         assert.deepEqual(Number(await instance_tko.balanceOf(instance_ido1.address)), Number(9998 * mulDecimals));
         // IDO 2
         await truffleAssert.fails(instance_ido2.redeemTokens({ from: accounts[1] }), "Minimum raise has not been achieved");
-        assert.deepEqual((Number(await web3.eth.getBalance(accounts[4])) / (10 ** 18)).toFixed(0), "999");
+        const getBalance = Number(await web3.eth.getBalance(accounts[4])) / (10 ** 18);
+        assert.deepEqual((Number(await web3.eth.getBalance(accounts[4])) / (10 ** 18)).toFixed(0), getBalance.toFixed(0));
         assert.deepEqual(Number(await web3.eth.getBalance(listaddress[1])), 1000000000000000000);
         truffleAssert.eventEmitted(await instance_ido2.redeemGivenMinimumGoalNotAchieved({ from: accounts[4] }), 'Refund');
         await truffleAssert.fails(instance_ido2.redeemGivenMinimumGoalNotAchieved({ from: accounts[4] }), "Already redeemed");
-        assert.deepEqual((Number(await web3.eth.getBalance(accounts[4])) / (10 ** 18)).toFixed(0), "1000");
+        assert.deepEqual((Number(await web3.eth.getBalance(accounts[4])) / (10 ** 18)).toFixed(0), (getBalance + 1).toFixed(0));
         assert.deepEqual(Number(await web3.eth.getBalance(listaddress[1])), 0);
         // IDO 3
         await truffleAssert.fails(instance_ido3.redeemTokens({ from: accounts[5] }), "Has to be non Atomic swap");
