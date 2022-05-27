@@ -50,20 +50,8 @@ contract('TPower', function (accounts) {
     });
 
     it('4. Transfer', async () => {
-        const amount = Number(100 * mulDecimals);
-        assert.deepEqual(Number(await instance_tpower.balanceOf(accounts[0])), 0);
-        assert.deepEqual(Number(await instance_tpower.stakedAmount(accounts[0])), 0);
-        truffleAssert.eventEmitted(await instance_tpower.lock(BigInt(amount)), 'onLock');
-        assert.deepEqual(Number(await instance_tpower.balanceOf(accounts[0])), amount / 100);
-        assert.deepEqual(Number(await instance_tpower.stakedAmount(accounts[0])), amount);
-        await truffleAssert.fails(instance_tpower.transfer(accounts[1], 100), "Minimum amount 1 TKO-POWER"); // on wei
-        await truffleAssert.fails(instance_tpower.transfer(accounts[1], BigInt(amount / 100)), "Sender or receiver no proxy address");
-        truffleAssert.eventEmitted(await instance_tpower.setProxyAddressBatch([accounts[1]], true), 'ProxyAddress');
-        truffleAssert.eventEmitted(await instance_tpower.transfer(accounts[1], BigInt(amount / 100)), 'Transfer');
-        assert.deepEqual(Number(await instance_tpower.balanceOf(accounts[0])), 0);
-        assert.deepEqual(Number(await instance_tpower.stakedAmount(accounts[0])), 0);
-        assert.deepEqual(Number(await instance_tpower.balanceOf(accounts[1])), amount / 100);
-        assert.deepEqual(Number(await instance_tpower.stakedAmount(accounts[1])), amount);
+        const amount = BigInt(100 * mulDecimals);
+        await truffleAssert.fails(instance_tpower.transfer(accounts[1], amount), "Transfer disable");
     });
 
 });

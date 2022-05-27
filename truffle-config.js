@@ -11,7 +11,7 @@ try {
 } catch (err) {
   console.error(err)
 }
-const mnemonic = secret.local.mnemonic;
+const mnemonic = secret?.local?.mnemonic;
 
 module.exports = {
   plugins: [
